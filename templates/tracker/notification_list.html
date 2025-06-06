@@ -1,0 +1,193 @@
+{% extends 'base.html' %}
+
+{% block title %}Notifications{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-md-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h2>
+                    Notifications 
+                    {% if unread_count > 0 %}
+                        <span class="badge bg-danger">{{ unread_count }}</span>
+                    {% endif %}
+                </h2>
+                <div class="btn-group" role="group">
+                    <a href="{% url 'notification_mark_all_read' %}" class="btn btn-outline-primary btn-sm" 
+                       onclick="return confirm('Mark all notifications as read?')">
+                        Mark All Read
+                    </a>
+                </div>
+            </div>
+
+            <!-- Filter and Search -->
+            <div class="row mb-3">
+                <div class="col-md-6">
+                    <div class="btn-group" role="group">
+                        <a href="?filter=all{% if search_query %}&search={{ search_query }}{% endif %}" 
+                           class="btn {% if filter_type == 'all' %}btn-primary{% else %}btn-outline-primary{% endif %} btn-sm">
+                            All
+                        </a>
+                        <a href="?filter=unread{% if search_query %}&search={{ search_query }}{% endif %}" 
+                           class="btn {% if filter_type == 'unread' %}btn-primary{% else %}btn-outline-primary{% endif %} btn-sm">
+                            Unread ({{ unread_count }})
+                        </a>
+                        <a href="?filter=read{% if search_query %}&search={{ search_query }}{% endif %}" 
+                           class="btn {% if filter_type == 'read' %}btn-primary{% else %}btn-outline-primary{% endif %} btn-sm">
+                            Read
+                        </a>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <form method="get" class="d-flex">
+                        <input type="hidden" name="filter" value="{{ filter_type }}">
+                        <input type="text" name="search" class="form-control form-control-sm me-2" 
+                               placeholder="Search notifications..." value="{{ search_query }}">
+                        <button type="submit" class="btn btn-outline-secondary btn-sm">Search</button>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Notifications List -->
+            {% if page_obj %}
+                <div class="list-group">
+                    {% for notification in page_obj %}
+                        <div class="list-group-item {% if not notification.is_read %}list-group-item-warning{% endif %}">
+                            <div class="d-flex w-100 justify-content-between">
+                                <div class="flex-grow-1">
+                                    <div class="d-flex align-items-center mb-1">
+                                        <h6 class="mb-0 me-2">
+                                            <a href="{% url 'notification_detail' notification.pk %}" 
+                                               class="text-decoration-none">
+                                                {{ notification.title }}
+                                            </a>
+                                        </h6>
+                                        <span class="badge bg-{% if notification.notification_type == 'reminder' %}info{% elif notification.notification_type == 'achievement' %}success{% else %}secondary{% endif %} me-2">
+                                            {{ notification.get_notification_type_display }}
+                                        </span>
+                                        {% if not notification.is_read %}
+                                            <span class="badge bg-danger">New</span>
+                                        {% endif %}
+                                    </div>
+                                    <p class="mb-1 text-muted">{{ notification.message|truncatechars:150 }}</p>
+                                    <small class="text-muted">
+                                        {{ notification.created_at|timesince }} ago
+                                        {% if notification.study_session %}
+                                            • Related to: {{ notification.study_session.subject }}
+                                        {% endif %}
+                                    </small>
+                                </div>
+                                <div class="dropdown">
+                                    <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button" 
+                                            data-bs-toggle="dropdown">
+                                        Actions
+                                    </button>
+                                    <ul class="dropdown-menu">
+                                        {% if not notification.is_read %}
+                                            <li>
+                                                <a class="dropdown-item" 
+                                                   href="{% url 'notification_mark_read' notification.pk %}">
+                                                    Mark as Read
+                                                </a>
+                                            </li>
+                                        {% endif %}
+                                        <li>
+                                            <a class="dropdown-item" 
+                                               href="{% url 'notification_detail' notification.pk %}">
+                                                View Details
+                                            </a>
+                                        </li>
+                                        <li><hr class="dropdown-divider"></li>
+                                        <li>
+                                            <a class="dropdown-item text-danger" 
+                                               href="{% url 'notification_delete' notification.pk %}"
+                                               onclick="return confirm('Delete this notification?')">
+                                                Delete
+                                            </a>
+                                        </li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                    {% endfor %}
+                </div>
+
+                <!-- Pagination -->
+                {% if page_obj.has_other_pages %}
+                    <nav aria-label="Notifications pagination" class="mt-4">
+                        <ul class="pagination justify-content-center">
+                            {% if page_obj.has_previous %}
+                                <li class="page-item">
+                                    <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if filter_type != 'all' %}&filter={{ filter_type }}{% endif %}{% if search_query %}&search={{ search_query }}{% endif %}">
+                                        Previous
+                                    </a>
+                                </li>
+                            {% endif %}
+
+                            {% for num in page_obj.paginator.page_range %}
+                                {% if page_obj.number == num %}
+                                    <li class="page-item active">
+                                        <span class="page-link">{{ num }}</span>
+                                    </li>
+                                {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
+                                    <li class="page-item">
+                                        <a class="page-link" href="?page={{ num }}{% if filter_type != 'all' %}&filter={{ filter_type }}{% endif %}{% if search_query %}&search={{ search_query }}{% endif %}">
+                                            {{ num }}
+                                        </a>
+                                    </li>
+                                {% endif %}
+                            {% endfor %}
+
+                            {% if page_obj.has_next %}
+                                <li class="page-item">
+                                    <a class="page-link" href="?page={{ page_obj.next_page_number }}{% if filter_type != 'all' %}&filter={{ filter_type }}{% endif %}{% if search_query %}&search={{ search_query }}{% endif %}">
+                                        Next
+                                    </a>
+                                </li>
+                            {% endif %}
+                        </ul>
+                    </nav>
+                {% endif %}
+            {% else %}
+                <div class="alert alert-info text-center">
+                    <h4>No notifications found</h4>
+                    <p class="mb-0">
+                        {% if search_query %}
+                            No notifications match your search criteria.
+                        {% elif filter_type == 'unread' %}
+                            You have no unread notifications.
+                        {% elif filter_type == 'read' %}
+                            You have no read notifications.
+                        {% else %}
+                            You don't have any notifications yet.
+                        {% endif %}
+                    </p>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<script>
+// Auto-refresh notification count every 30 seconds
+setInterval(function() {
+    fetch('/api/notifications/counts/')
+        .then(response => response.json())
+        .then(data => {
+            const badge = document.querySelector('.badge.bg-danger');
+            if (data.unread > 0) {
+                if (badge) {
+                    badge.textContent = data.unread;
+                } else {
+                    const title = document.querySelector('h2');
+                    title.innerHTML += ' <span class="badge bg-danger">' + data.unread + '</span>';
+                }
+            } else if (badge) {
+                badge.remove();
+            }
+        })
+        .catch(error => console.error('Error fetching notification counts:', error));
+}, 30000);
+</script>
+{% endblock %}

@@ -1,0 +1,300 @@
+{% extends 'base.html' %}
+
+{% block title %}Dashboard - Study Tracker{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <h1><i class="fas fa-tachometer-alt"></i> Dashboard</h1>
+        <p class="text-muted">Welcome back, {{ user.username }}!</p>
+    </div>
+</div>
+
+<div class="row mb-4">
+    <div class="col-md-3">
+        <div class="card bg-primary text-white">
+            <div class="card-body">
+                <div class="d-flex justify-content-between">
+                    <div>
+                        <h5 class="card-title">Total Sessions</h5>
+                        <h2 id="total-sessions">-</h2>
+                    </div>
+                    <div>
+                        <i class="fas fa-book fa-2x"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card bg-success text-white">
+            <div class="card-body">
+                <div class="d-flex justify-content-between">
+                    <div>
+                        <h5 class="card-title">Completed</h5>
+                        <h2 id="completed-sessions">-</h2>
+                    </div>
+                    <div>
+                        <i class="fas fa-check-circle fa-2x"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card bg-warning text-white">
+            <div class="card-body">
+                <div class="d-flex justify-content-between">
+                    <div>
+                        <h5 class="card-title">Planned</h5>
+                        <h2 id="planned-sessions">-</h2>
+                    </div>
+                    <div>
+                        <i class="fas fa-clock fa-2x"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card bg-danger text-white">
+            <div class="card-body">
+                <div class="d-flex justify-content-between">
+                    <div>
+                        <h5 class="card-title">Missed</h5>
+                        <h2 id="missed-sessions">-</h2>
+                    </div>
+                    <div>
+                        <i class="fas fa-times-circle fa-2x"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Charts Row -->
+<div class="row mb-4">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h5><i class="fas fa-chart-pie"></i> Study Session Status</h5>
+            </div>
+            <div class="card-body">
+                <canvas id="statusPieChart" width="400" height="300"></canvas>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h5><i class="fas fa-chart-bar"></i> Session Duration (Last 10)</h5>
+            </div>
+            <div class="card-body">
+                <canvas id="durationBarChart" width="400" height="300"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header">
+                <h5><i class="fas fa-calendar-week"></i> Recent Study Sessions</h5>
+            </div>
+            <div class="card-body">
+                <div id="recent-sessions">
+                    <p>Loading...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-header">
+                <h5><i class="fas fa-plus"></i> Quick Actions</h5>
+            </div>
+            <div class="card-body">
+                <div class="d-grid gap-2">
+                    <a href="{% url 'session_create' %}" class="btn btn-primary">
+                        <i class="fas fa-plus"></i> New Study Session
+                    </a>
+                    <a href="{% url 'session_list' %}" class="btn btn-outline-primary">
+                        <i class="fas fa-list"></i> View All Sessions
+                    </a>
+                    <a href="{% url 'calendar' %}" class="btn btn-outline-primary">
+                        <i class="fas fa-calendar"></i> Calendar View
+                    </a>
+                    <a href="{% url 'google_calendar_settings' %}" class="btn btn-outline-secondary">
+                        <i class="fab fa-google"></i> Google Calendar
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<!-- Chart.js CDN -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<script>
+let statusPieChart, durationBarChart;
+
+document.addEventListener('DOMContentLoaded', function() {
+    // Load dashboard statistics
+    fetch('/api/study-summary/')
+        .then(response => response.json())
+        .then(data => {
+            document.getElementById('total-sessions').textContent = data.total;
+            document.getElementById('completed-sessions').textContent = data.completed;
+            document.getElementById('planned-sessions').textContent = data.planned;
+            document.getElementById('missed-sessions').textContent = data.missed;
+            
+            // Create pie chart
+            createStatusPieChart(data);
+        })
+        .catch(error => {
+            console.error('Error loading statistics:', error);
+        });
+
+    // Load session durations for bar chart
+    fetch('/api/session-durations/')
+        .then(response => response.json())
+        .then(data => {
+            createDurationBarChart(data);
+        })
+        .catch(error => {
+            console.error('Error loading session durations:', error);
+        });
+});
+
+function createStatusPieChart(data) {
+    const ctx = document.getElementById('statusPieChart').getContext('2d');
+    
+    // Destroy existing chart if it exists
+    if (statusPieChart) {
+        statusPieChart.destroy();
+    }
+    
+    statusPieChart = new Chart(ctx, {
+        type: 'pie',
+        data: {
+            labels: ['Completed', 'Planned', 'Missed'],
+            datasets: [{
+                data: [data.completed, data.planned, data.missed],
+                backgroundColor: [
+                    '#28a745', // Green for completed
+                    '#ffc107', // Yellow for planned
+                    '#dc3545'  // Red for missed
+                ],
+                borderColor: [
+                    '#ffffff',
+                    '#ffffff',
+                    '#ffffff'
+                ],
+                borderWidth: 2
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    position: 'bottom',
+                    labels: {
+                        padding: 20,
+                        usePointStyle: true
+                    }
+                },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            const label = context.label || '';
+                            const value = context.parsed;
+                            const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                            const percentage = total > 0 ? ((value / total) * 100).toFixed(1) : 0;
+                            return `${label}: ${value} (${percentage}%)`;
+                        }
+                    }
+                }
+            }
+        }
+    });
+}
+
+function createDurationBarChart(data) {
+    const ctx = document.getElementById('durationBarChart').getContext('2d');
+    
+    // Destroy existing chart if it exists
+    if (durationBarChart) {
+        durationBarChart.destroy();
+    }
+    
+    const colors = data.map(session => {
+        switch(session.status) {
+            case 'Completed': return '#28a745';
+            case 'Planned': return '#ffc107';
+            case 'Missed': return '#dc3545';
+            default: return '#6c757d';
+        }
+    });
+    
+    durationBarChart = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: data.map(session => `${session.subject} (${session.date})`),
+            datasets: [{
+                label: 'Duration (minutes)',
+                data: data.map(session => session.duration),
+                backgroundColor: colors,
+                borderColor: colors,
+                borderWidth: 1
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    title: {
+                        display: true,
+                        text: 'Duration (minutes)'
+                    }
+                },
+                x: {
+                    title: {
+                        display: true,
+                        text: 'Study Sessions'
+                    },
+                    ticks: {
+                        maxRotation: 45,
+                        minRotation: 45
+                    }
+                }
+            },
+            plugins: {
+                legend: {
+                    display: false
+                },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            const session = data[context.dataIndex];
+                            return [
+                                `Duration: ${context.parsed.y} minutes`,
+                                `Status: ${session.status}`,
+                                `Subject: ${session.subject}`
+                            ];
+                        }
+                    }
+                }
+            }
+        }
+    });
+}
+</script>
+{% endblock %}

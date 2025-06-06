@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Study Tracker{% endblock %}</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+        <div class="container">
+            <a class="navbar-brand" href="{% url 'home' %}">
+                <i class="fas fa-book"></i> Study Tracker
+            </a>
+            
+            {% if user.is_authenticated %}
+            <div class="navbar-nav ms-auto">
+                <a class="nav-link" href="{% url 'dashboard' %}">Dashboard</a>
+                <a class="nav-link" href="{% url 'session_list' %}">Sessions</a>
+                <a class="nav-link" href="{% url 'calendar' %}">Calendar</a>
+                
+                <!-- Notification Bell -->
+                <div class="nav-item dropdown">
+                    <a class="nav-link dropdown-toggle position-relative" href="#" role="button" data-bs-toggle="dropdown" id="notificationDropdown">
+                        <i class="fas fa-bell"></i>
+                        <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger" id="notificationBadge" style="display: none;">
+                            0
+                        </span>
+                    </a>
+                    <ul class="dropdown-menu dropdown-menu-end" style="min-width: 300px;" id="notificationDropdownMenu">
+                        <li><h6 class="dropdown-header">Notifications</h6></li>
+                        <li><div class="dropdown-item-text text-center" id="notificationLoading">Loading...</div></li>
+                        <li><hr class="dropdown-divider"></li>
+                        <li><a class="dropdown-item text-center" href="{% url 'notification_list' %}">View All Notifications</a></li>
+                    </ul>
+                </div>
+                
+                <div class="nav-item dropdown">
+                    <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">
+                        {{ user.username }}
+                    </a>
+                    <ul class="dropdown-menu">
+                        <li><a class="dropdown-item" href="{% url 'google_calendar_settings' %}">Google Calendar</a></li>
+                        <li><hr class="dropdown-divider"></li>
+                        <li><a class="dropdown-item" href="{% url 'logout' %}">Logout</a></li>
+                    </ul>
+                </div>
+            </div>
+            {% else %}
+            <div class="navbar-nav ms-auto">
+                <a class="nav-link" href="{% url 'login' %}">Login</a>
+                <a class="nav-link" href="{% url 'register' %}">Register</a>
+            </div>
+            {% endif %}
+        </div>
+    </nav>
+
+    <main class="container mt-4">
+        {% if messages %}
+            {% for message in messages %}
+                <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                    {{ message }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
+            {% endfor %}
+        {% endif %}
+
+        {% block content %}
+        {% endblock %}
+    </main>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    
+    {% if user.is_authenticated %}
+    <script>
+    // Real-time notification system
+    let notificationCheckInterval;
+    
+    function loadNotifications() {
+        fetch('/api/notifications/?limit=5&is_read=false')
+            .then(response => response.json())
+            .then(data => {
+                const badge = document.getElementById('notificationBadge');
+                const dropdown = document.getElementById('notificationDropdownMenu');
+                const loading = document.getElementById('notificationLoading');
+                
+                // Update badge
+                if (data.length > 0) {
+                    badge.textContent = data.length;
+                    badge.style.display = 'block';
+                } else {
+                    badge.style.display = 'none';
+                }
+                
+                // Update dropdown content
+                let notificationItems = '';
+                if (data.length === 0) {
+                    notificationItems = '<li><div class="dropdown-item-text text-center text-muted">No new notifications</div></li>';
+                } else {
+                    data.forEach(notification => {
+                        const timeAgo = new Date(notification.created_at).toLocaleString();
+                        notificationItems += `
+                            <li>
+                                <a class="dropdown-item" href="/notifications/${notification.id}/">
+                                    <strong>${notification.title}</strong>
+                                    <br><small class="text-muted">${timeAgo}</small>
+                                </a>
+                            </li>
+                        `;
+                    });
+                }
+                
+                // Replace loading with actual notifications
+                const headerItem = '<li><h6 class="dropdown-header">Recent Notifications</h6></li>';
+                const dividerItem = '<li><hr class="dropdown-divider"></li>';
+                const viewAllItem = '<li><a class="dropdown-item text-center" href="/notifications/">View All Notifications</a></li>';
+                
+                dropdown.innerHTML = headerItem + notificationItems + dividerItem + viewAllItem;
+            })
+            .catch(error => {
+                console.error('Error loading notifications:', error);
+                document.getElementById('notificationLoading').textContent = 'Error loading notifications';
+            });
+    }
+    
+    function showNotificationAlert(notification) {
+        // Create a toast notification for new alerts
+        const toastContainer = document.getElementById('toastContainer') || createToastContainer();
+        
+        const toastEl = document.createElement('div');
+        toastEl.className = 'toast align-items-center text-white bg-primary border-0';
+        toastEl.setAttribute('role', 'alert');
+        toastEl.innerHTML = `
+            <div class="d-flex">
+                <div class="toast-body">
+                    <strong>${notification.title}</strong><br>
+                    ${notification.message}
+                </div>
+                <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+            </div>
+        `;
+        
+        toastContainer.appendChild(toastEl);
+        const toast = new bootstrap.Toast(toastEl, { delay: 10000 }); // Show for 10 seconds
+        toast.show();
+        
+        // Remove toast element after it's hidden
+        toastEl.addEventListener('hidden.bs.toast', () => {
+            toastEl.remove();
+        });
+    }
+    
+    function createToastContainer() {
+        const container = document.createElement('div');
+        container.id = 'toastContainer';
+        container.className = 'toast-container position-fixed top-0 end-0 p-3';
+        container.style.zIndex = '1055';
+        document.body.appendChild(container);
+        return container;
+    }
+    
+    function checkForNewNotifications() {
+        static_notification_count = static_notification_count || 0;
+        
+        fetch('/api/notifications/counts/')
+            .then(response => response.json())
+            .then(data => {
+                if (data.unread > static_notification_count && static_notification_count > 0) {
+                    // New notification received, load and show it
+                    fetch('/api/notifications/?limit=1&is_read=false')
+                        .then(response => response.json())
+                        .then(notifications => {
+                            if (notifications.length > 0) {
+                                showNotificationAlert(notifications[0]);
+                            }
+                        });
+                }
+                static_notification_count = data.unread;
+                loadNotifications(); // Refresh the dropdown
+            })
+            .catch(error => console.error('Error checking notifications:', error));
+    }
+    
+    // Initialize notification system
+    document.addEventListener('DOMContentLoaded', function() {
+        loadNotifications();
+        
+        // Check for new notifications every 30 seconds
+        notificationCheckInterval = setInterval(checkForNewNotifications, 30000);
+        
+        // Load notifications when dropdown is clicked
+        document.getElementById('notificationDropdown').addEventListener('click', loadNotifications);
+    });
+    
+    // Clean up interval when page unloads
+    window.addEventListener('beforeunload', function() {
+        if (notificationCheckInterval) {
+            clearInterval(notificationCheckInterval);
+        }
+    });
+    </script>
+    {% endif %}
+    
+    {% block scripts %}{% endblock %}
+</body>
+</html>

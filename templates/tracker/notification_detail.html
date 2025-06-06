@@ -1,0 +1,80 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ notification.title }}{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-md-8 mx-auto">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <div>
+                        <h4 class="mb-0">{{ notification.title }}</h4>
+                        <span class="badge bg-{% if notification.notification_type == 'reminder' %}info{% elif notification.notification_type == 'achievement' %}success{% else %}secondary{% endif %}">
+                            {{ notification.get_notification_type_display }}
+                        </span>
+                        {% if not notification.is_read %}
+                            <span class="badge bg-danger">New</span>
+                        {% endif %}
+                    </div>
+                    <div class="dropdown">
+                        <button class="btn btn-outline-secondary dropdown-toggle" type="button" 
+                                data-bs-toggle="dropdown">
+                            Actions
+                        </button>
+                        <ul class="dropdown-menu">
+                            {% if not notification.is_read %}
+                                <li>
+                                    <a class="dropdown-item" 
+                                       href="{% url 'notification_mark_read' notification.pk %}">
+                                        Mark as Read
+                                    </a>
+                                </li>
+                            {% endif %}
+                            <li>
+                                <a class="dropdown-item text-danger" 
+                                   href="{% url 'notification_delete' notification.pk %}"
+                                   onclick="return confirm('Delete this notification?')">
+                                    Delete
+                                </a>
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div class="mb-3">
+                        <p class="card-text">{{ notification.message }}</p>
+                    </div>
+                    
+                    {% if notification.study_session %}
+                        <div class="alert alert-info">
+                            <h6>Related Study Session:</h6>
+                            <p class="mb-2">
+                                <strong>Subject:</strong> {{ notification.study_session.subject }}<br>
+                                <strong>Date:</strong> {{ notification.study_session.study_date|date:"F d, Y" }}<br>
+                                <strong>Time:</strong> {{ notification.study_session.start_time|time:"H:i" }} - {{ notification.study_session.end_time|time:"H:i" }}<br>
+                                <strong>Status:</strong> {{ notification.study_session.status }}
+                            </p>
+                            <a href="{% url 'session_edit' notification.study_session.pk %}" class="btn btn-sm btn-primary">
+                                View Session
+                            </a>
+                        </div>
+                    {% endif %}
+                    
+                    <div class="text-muted">
+                        <small>
+                            <i class="fas fa-clock"></i> Created {{ notification.created_at|timesince }} ago
+                            ({{ notification.created_at|date:"F d, Y H:i" }})
+                        </small>
+                    </div>
+                </div>
+                <div class="card-footer">
+                    <a href="{% url 'notification_list' %}" class="btn btn-secondary">
+                        <i class="fas fa-arrow-left"></i> Back to Notifications
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

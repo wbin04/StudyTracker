@@ -1,0 +1,46 @@
+{% extends 'base.html' %}
+
+{% block title %}Home - Study Tracker{% endblock %}
+
+{% block content %}
+<div class="jumbotron bg-light p-5 rounded-3">
+    <div class="container-fluid py-5">
+        <h1 class="display-5 fw-bold">Welcome to Study Tracker</h1>
+        <p class="col-md-8 fs-4">Manage your study sessions effectively with Google Calendar integration.</p>
+        <div class="mt-4">
+            <a class="btn btn-primary btn-lg" href="{% url 'register' %}" role="button">Get Started</a>
+            <a class="btn btn-outline-secondary btn-lg" href="{% url 'login' %}" role="button">Login</a>
+        </div>
+    </div>
+</div>
+
+<div class="row mt-5">
+    <div class="col-md-4">
+        <div class="card h-100">
+            <div class="card-body text-center">
+                <i class="fas fa-calendar-alt fa-3x text-primary mb-3"></i>
+                <h5 class="card-title">Study Planning</h5>
+                <p class="card-text">Create and manage your study sessions with dates and times.</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card h-100">
+            <div class="card-body text-center">
+                <i class="fab fa-google fa-3x text-danger mb-3"></i>
+                <h5 class="card-title">Google Calendar Sync</h5>
+                <p class="card-text">Automatically sync your study sessions with Google Calendar.</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card h-100">
+            <div class="card-body text-center">
+                <i class="fas fa-chart-bar fa-3x text-success mb-3"></i>
+                <h5 class="card-title">Progress Tracking</h5>
+                <p class="card-text">Monitor your study progress with detailed statistics.</p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

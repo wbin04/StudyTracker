@@ -1,0 +1,18 @@
+# Core Django dependencies
+Django==5.2.1
+djangorestframework==3.15.2
+
+# Environment configuration
+python-decouple==3.8
+
+# Google Calendar Integration
+google-auth==2.28.2
+google-auth-oauthlib==1.2.0
+google-auth-httplib2==0.2.0
+google-api-python-client==2.125.0
+
+# Background task scheduling
+APScheduler==3.10.4
+
+# Development and utilities
+pytz==2024.1

@@ -1,0 +1,169 @@
+{% extends 'base.html' %}
+
+{% block title %}Study Sessions - Study Tracker{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="d-flex justify-content-between align-items-center">
+            <h1><i class="fas fa-list"></i> Study Sessions</h1>
+            <div>
+                <a href="{% url 'notification_list' %}" class="btn btn-outline-info me-2">
+                    <i class="fas fa-bell"></i> Notifications
+                    <span id="notification-badge" class="badge bg-danger" style="display: none;"></span>
+                </a>
+                <a href="{% url 'session_create' %}" class="btn btn-primary">
+                    <i class="fas fa-plus"></i> Add New Session
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row mt-3">
+    <div class="col-12">
+        {% if sessions %}
+            <div class="table-responsive">
+                <table class="table table-striped">
+                    <thead>
+                        <tr>
+                            <th>Subject</th>
+                            <th>Date</th>
+                            <th>Time</th>
+                            <th>Duration</th>
+                            <th>Status</th>
+                            <th>Google Sync</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for session in sessions %}
+                        <tr>
+                            <td>
+                                <strong>{{ session.subject }}</strong>
+                                {% if session.description %}
+                                    <br><small class="text-muted">{{ session.description|truncatewords:10 }}</small>
+                                {% endif %}
+                            </td>
+                            <td>{{ session.study_date|date:"M d, Y" }}</td>
+                            <td>{{ session.start_time|time:"H:i" }} - {{ session.end_time|time:"H:i" }}</td>
+                            <td>
+                                {% if session.duration %}
+                                    {{ session.duration }}
+                                {% else %}
+                                    -
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if session.status == 'Completed' %}
+                                    <span class="badge bg-success">{{ session.status }}</span>
+                                {% elif session.status == 'Planned' %}
+                                    <span class="badge bg-warning">{{ session.status }}</span>
+                                {% else %}
+                                    <span class="badge bg-danger">{{ session.status }}</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if session.sync_to_google %}
+                                    <i class="fas fa-check-circle text-success" title="Synced to Google Calendar"></i>
+                                {% else %}
+                                    <i class="fas fa-times-circle text-muted" title="Not synced"></i>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <div class="btn-group btn-group-sm" role="group">
+                                    <a href="{% url 'session_edit' session.pk %}" class="btn btn-outline-primary" title="Edit Session">
+                                        <i class="fas fa-edit"></i>
+                                    </a>
+                                    <a href="{% url 'create_session_reminder' session.pk %}" class="btn btn-outline-info" title="Create Reminder">
+                                        <i class="fas fa-bell"></i>
+                                    </a>
+                      
+                                    <a href="{% url 'session_delete' session.pk %}" class="btn btn-outline-danger" title="Delete Session">
+                                        <i class="fas fa-trash"></i>
+                                    </a>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% else %}
+            <div class="text-center py-5">
+                <i class="fas fa-book fa-3x text-muted mb-3"></i>
+                <h4>No study sessions yet</h4>
+                <p class="text-muted">Start by creating your first study session!</p>
+                <a href="{% url 'session_create' %}" class="btn btn-primary">
+                    <i class="fas fa-plus"></i> Create Study Session
+                </a>
+            </div>
+        {% endif %}
+    </div>
+</div>
+
+<script>
+// Function to create a quick 30-minute reminder
+function createQuickReminder(sessionId) {
+    fetch('/api/notifications/create-reminder/', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+        },
+        body: JSON.stringify({
+            session_id: sessionId,
+            reminder_minutes: 30
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert('✅ ' + data.message);
+            updateNotificationBadge();
+        } else {
+            alert('❌ ' + data.message);
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('❌ Failed to create reminder. Please try again.');
+    });
+}
+
+// Function to update notification badge
+function updateNotificationBadge() {
+    fetch('/api/notifications/counts/')
+        .then(response => response.json())
+        .then(data => {
+            const badge = document.getElementById('notification-badge');
+            if (data.unread > 0) {
+                badge.textContent = data.unread;
+                badge.style.display = 'inline';
+            } else {
+                badge.style.display = 'none';
+            }
+        })
+        .catch(error => console.error('Error fetching notification counts:', error));
+}
+
+// Update notification badge on page load and every 30 seconds
+document.addEventListener('DOMContentLoaded', function() {
+    updateNotificationBadge();
+    setInterval(updateNotificationBadge, 30000);
+});
+
+// Add CSRF token to all AJAX requests
+document.addEventListener('DOMContentLoaded', function() {
+    const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]');
+    if (!csrfToken) {
+        // Create a hidden CSRF token input if it doesn't exist
+        const tokenInput = document.createElement('input');
+        tokenInput.type = 'hidden';
+        tokenInput.name = 'csrfmiddlewaretoken';
+        tokenInput.value = '{{ csrf_token }}';
+        document.body.appendChild(tokenInput);
+    }
+});
+</script>
+{% endblock %}
